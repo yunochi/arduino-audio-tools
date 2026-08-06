@@ -843,27 +843,19 @@ public:
               audio->feedback.compute.fifo_count.fifo_lvl_avg -
               (audio->feedback.compute.fifo_count.fifo_lvl_avg >> 8) +
               ((uint32_t)ff_count << 8);
-          uint32_t avg = audio->feedback.compute.fifo_count.fifo_lvl_avg >> 8;
+          uint32_t avg = audio->feedback.compute.fifo_count.fifo_lvl_avg >> 16;
           uint32_t thr = audio->feedback.compute.fifo_count.fifo_lvl_thr;
           uint32_t nom = audio->feedback.compute.fifo_count.nom_value;
           if (avg > thr) {
-            // Buffer fuller than the target level: ask the host to slow
-            // down. rate_const[1] is scaled so avg==fifo_depth (full) maps
-            // exactly to min_value.
-            uint32_t drop =
-                (uint32_t)audio->feedback.compute.fifo_count.rate_const[1] *
-                (avg - thr);
-            audio->feedback.value =
-                (nom > drop) ? nom - drop : audio->feedback.min_value;
+            uint32_t drop = (uint32_t)audio->feedback.compute.fifo_count.rate_const[1] *
+                            (avg - thr);
+            audio->feedback.value = nom - drop;
           } else {
-            // Buffer emptier than the target level: ask the host to speed
-            // up. rate_const[0] is scaled so avg==0 (empty) maps exactly to
-            // max_value.
             audio->feedback.value =
-                nom +
-                (uint32_t)audio->feedback.compute.fifo_count.rate_const[0] *
-                    (thr - avg);
+                nom + (uint32_t)audio->feedback.compute.fifo_count.rate_const[0] *
+                (thr - avg);
           }
+          
           uint32_t clamped = audio->feedback.value < audio->feedback.min_value
                                 ? audio->feedback.min_value
                                 : audio->feedback.value;
