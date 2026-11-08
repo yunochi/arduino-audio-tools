@@ -1821,15 +1821,11 @@ public:
         if (fifo_depth == 0) fifo_depth = 1;  // guard against div-by-zero
         uint16_t fifo_lvl_thr = fifo_depth / 2;
         audio->feedback.compute.fifo_count.fifo_lvl_thr = fifo_lvl_thr;
-        // fifo_lvl_avg is a Q8 exponential moving average (see the update
-        // formula in tud_audio_feedback_interval_isr: `avg = fifo_lvl_avg
-        // >> 8`, fed by `ff_count << 8` each tick) -- seed it in the same
-        // Q8 scale. It was previously seeded as `fifo_lvl_thr << 16` (Q16,
-        // 256x too large), which pinned the very first ~1400 feedback
-        // updates (~1.4s at 1kHz) at feedback.max_value before decaying
-        // into a sane range.
+        // fifo_lvl_avg is a Q16 exponential moving average.  The update
+        // formula `val - (val >> 8) + (ff_count << 8)` converges to
+        // ff_count << 16 at steady state -- seed and extract in Q16.
         audio->feedback.compute.fifo_count.fifo_lvl_avg =
-            ((uint32_t)fifo_lvl_thr) << 8;
+            ((uint32_t)fifo_lvl_thr) << 16;
         uint32_t nominal =
             ((fb_param.sample_freq / 100) << 16) / (frame_div / 100);
         audio->feedback.compute.fifo_count.nom_value = nominal;
